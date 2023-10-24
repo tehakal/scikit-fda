@@ -13,9 +13,9 @@ from scipy.interpolate import (
     make_interp_spline,
 )
 
+from .._utils.ndfunction.evaluator import Evaluator
 from ..typing._base import EvaluationPoints
 from ..typing._numpy import ArrayLike, NDArrayFloat
-from .evaluator import Evaluator
 
 if TYPE_CHECKING:
     from .grid import FDataGrid
@@ -44,7 +44,7 @@ class _BaseInterpolation(Evaluator):
             for f, e in zip(fdata, eval_points)
         ])
 
-    def _evaluate(  # noqa: D102
+    def __call__(  # noqa: D102
         self,
         fdata: FDataGrid,
         eval_points: ArrayLike,

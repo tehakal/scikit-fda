@@ -29,6 +29,7 @@ classifiers = [
 dynamic = ["version"]
 
 dependencies = [
+	"array-api-compat",
 	"dcor",
 	"fdasrsf>=2.2.0",
 	"findiff",
