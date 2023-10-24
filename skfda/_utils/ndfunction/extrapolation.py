@@ -1,4 +1,5 @@
-"""Module with the extrapolation methods.
+"""
+Module with the extrapolation methods.
 
 Defines methods to evaluate points outside the :term:`domain` range.
 
