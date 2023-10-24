@@ -11,6 +11,8 @@ from abc import ABC
 import pandas
 
 from .._utils.ndfunction import NDFunction, concatenate as concatenate
+from ..typing._base import LabelTupleLike
+from .extrapolation import ExtrapolationLike
 
 
 class FData(  # noqa: WPS214
@@ -33,3 +35,20 @@ class FData(  # noqa: WPS214
             coordinate functions.
 
     """
+
+    def __init__(
+        self,
+        *,
+        extrapolation: ExtrapolationLike | None = None,
+        dataset_name: str | None = None,
+        argument_names: LabelTupleLike | None = None,
+        coordinate_names: LabelTupleLike | None = None,
+        sample_names: LabelTupleLike | None = None,
+    ) -> None:
+
+        self.extrapolation = extrapolation  # type: ignore[assignment]
+        self.dataset_name = dataset_name
+
+        self.argument_names = argument_names  # type: ignore[assignment]
+        self.coordinate_names = coordinate_names  # type: ignore[assignment]
+        self.sample_names = sample_names  # type: ignore[assignment]
