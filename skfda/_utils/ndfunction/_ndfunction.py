@@ -71,113 +71,49 @@ class NDFunction(
     array.
     """
 
-    dataset_name: str | None
-
     def __init__(
         self,
         *,
         extrapolation: Optional[ExtrapolationLike] = None,
-        dataset_name: Optional[str] = None,
-        argument_names: Optional[LabelTupleLike] = None,
-        coordinate_names: Optional[LabelTupleLike] = None,
-        sample_names: Optional[LabelTupleLike] = None,
     ) -> None:
 
         self.extrapolation = extrapolation  # type: ignore[assignment]
-        self.dataset_name = dataset_name
-
-        self.argument_names = argument_names  # type: ignore[assignment]
-        self.coordinate_names = coordinate_names  # type: ignore[assignment]
-        self.sample_names = sample_names  # type: ignore[assignment]
-
-    @property
-    def argument_names(self) -> LabelTuple:
-        return self._argument_names
-
-    @argument_names.setter
-    def argument_names(
-        self,
-        names: Optional[LabelTupleLike],
-    ) -> None:
-        if names is None:
-            names = (None,) * self.dim_domain
-        else:
-            names = tuple(names)
-            if len(names) != self.dim_domain:
-                raise ValueError(
-                    "There must be a name for each of the "
-                    "dimensions of the domain.",
-                )
-
-        self._argument_names = names
-
-    @property
-    def coordinate_names(self) -> LabelTuple:
-        return self._coordinate_names
-
-    @coordinate_names.setter
-    def coordinate_names(
-        self,
-        names: Optional[LabelTupleLike],
-    ) -> None:
-        if names is None:
-            names = (None,) * self.dim_codomain
-        else:
-            names = tuple(names)
-            if len(names) != self.dim_codomain:
-                raise ValueError(
-                    "There must be a name for each of the "
-                    "dimensions of the codomain.",
-                )
-
-        self._coordinate_names = names
-
-    @property
-    def sample_names(self) -> LabelTuple:
-        return self._sample_names
-
-    @sample_names.setter
-    def sample_names(self, names: Optional[LabelTupleLike]) -> None:
-        if names is None:
-            names = (None,) * self.n_samples
-        else:
-            names = tuple(names)
-            if len(names) != self.n_samples:
-                raise ValueError(
-                    "There must be a name for each of the samples.",
-                )
-
-        self._sample_names = names
 
     @property
     @abstractmethod
-    def n_samples(self) -> int:
-        """Return the number of samples.
+    def shape(self) -> tuple[int, ...]:
+        """
+        Return the shape of the array of functions.
 
         Returns:
-            Number of samples of the FData object.
+            A tuple containing the shape of the array containing the
+            functions.
 
         """
         pass
 
     @property
     @abstractmethod
-    def dim_domain(self) -> int:
-        """Return number of dimensions of the :term:`domain`.
+    def input_shape(self) -> tuple[int, ...]:
+        """
+        Return the shape of the n-dimensional input.
 
         Returns:
-            Number of dimensions of the domain.
+            A tuple containing the shape of the arrays that the functions
+            will accept.
 
         """
         pass
 
     @property
     @abstractmethod
-    def dim_codomain(self) -> int:
-        """Return number of dimensions of the :term:`codomain`.
+    def output_shape(self) -> tuple[int, ...]:
+        """
+        Return the shape of the n-dimensional output.
 
         Returns:
-            Number of dimensions of the codomain.
+            A tuple containing the shape of the arrays that the functions
+            will output.
 
         """
         pass
@@ -819,7 +755,7 @@ class NDFunction(
         self,
         s_points: NDArrayFloat,
         t_points: NDArrayFloat,
-        /,
+        / ,
         correction: int = 0,
     ) -> NDArrayFloat:
         pass
@@ -827,7 +763,7 @@ class NDFunction(
     @overload
     def cov(  # noqa: WPS451
         self,
-        /,
+        / ,
         correction: int = 0,
     ) -> Callable[[NDArrayFloat, NDArrayFloat], NDArrayFloat]:
         pass
@@ -837,7 +773,7 @@ class NDFunction(
         self,
         s_points: Optional[NDArrayFloat] = None,
         t_points: Optional[NDArrayFloat] = None,
-        /,
+        / ,
         correction: int = 0,
     ) -> Union[
         Callable[[NDArrayFloat, NDArrayFloat], NDArrayFloat],
