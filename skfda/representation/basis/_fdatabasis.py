@@ -568,7 +568,7 @@ class FDataBasis(FData):  # noqa: WPS214
             ...     coefficients=[[1, 1, 1], [1, 0, 1]],
             ...     basis=MonomialBasis(domain_range=(0,5), n_basis=3),
             ... )
-            >>> fd.to_grid([0, 1, 2])
+            >>> fd.to_grid(np.array([0, 1, 2]))
             FDataGrid(
                 array([[[ 1.],
                         [ 3.],
@@ -576,7 +576,7 @@ class FDataBasis(FData):  # noqa: WPS214
                        [[ 1.],
                         [ 2.],
                         [ 5.]]]),
-                grid_points=(array([ 0., 1., 2.]),),
+                grid_points=array([array([0, 1, 2])], dtype=object),
                 domain_range=((0.0, 5.0),),
                 ...)
 

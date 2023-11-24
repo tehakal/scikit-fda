@@ -138,7 +138,7 @@ class MagnitudeShapePlot(BasePlot):
                         [-1. ],
                         [-1. ],
                         [-1. ]]]),
-                grid_points=(array([  0.,   2.,   4.,   6.,   8.,  10.]),),
+                grid_points=array([array([  0.,   2.,   4.,   6.,   8.,  10.])], dtype=object),
                 domain_range=((0.0, 10.0),),
                 ...),
             multivariate_depth=None,

@@ -6,14 +6,13 @@ __getattr__, __dir__, __all__ = lazy.attach(
     __name__,
     submodules=[
         "constants",
+        "ndfunction",
     ],
     submod_attrs={
         "_utils": [
-            "_cartesian_product",
             "_check_array_key",
             "_check_estimator",
             "_classifier_get_classes",
-            "_evaluate_grid",
             "_int_to_real",
             "_MapAcceptable",
             "_pairwise_symmetric",
@@ -34,11 +33,9 @@ __getattr__, __dir__, __all__ = lazy.attach(
 if TYPE_CHECKING:
 
     from ._utils import (
-        _cartesian_product as _cartesian_product,
         _check_array_key as _check_array_key,
         _check_estimator as _check_estimator,
         _classifier_get_classes as _classifier_get_classes,
-        _evaluate_grid as _evaluate_grid,
         _int_to_real as _int_to_real,
         _MapAcceptable as _MapAcceptable,
         _pairwise_symmetric as _pairwise_symmetric,

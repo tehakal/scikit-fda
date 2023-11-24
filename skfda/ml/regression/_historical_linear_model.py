@@ -7,8 +7,9 @@ import numpy as np
 import scipy.integrate
 from sklearn.utils.validation import check_is_fitted
 
-from ..._utils import _cartesian_product, _pairwise_symmetric
+from ..._utils import _pairwise_symmetric
 from ..._utils._sklearn_adapter import BaseEstimator, RegressorMixin
+from ..._utils.ndfunction.utils import _cartesian_product
 from ...representation import FData, FDataBasis, FDataGrid
 from ...representation.basis import (
     Basis,

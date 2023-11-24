@@ -1,7 +1,8 @@
-"""Module for functional data manipulation.
+"""
+Definition of generic array of functions over multidimensional arrays.
 
-Defines the abstract class that should be implemented by the funtional data
-objects of the package and contains some commons methods.
+Defines the protocol class that should be followed by every array
+of functions.
 """
 
 from __future__ import annotations
@@ -40,8 +41,8 @@ from ...typing._numpy import (
     NDArrayInt,
     NDArrayObject,
 )
-from .._utils import _evaluate_grid, _to_grid_points
-from ._array_api import Array, BoolDType, DType
+from .._utils import _to_grid_points
+from ._array_api import Array, DType, NestedArray, Shape
 from ._region import Region
 from .evaluator import Evaluator
 from .extrapolation import ExtrapolationLike, _parse_extrapolation
@@ -51,8 +52,7 @@ if TYPE_CHECKING:
     from ...representation.grid import FDataGrid
 
 T = TypeVar('T', bound='NDFunction')
-InputDType = TypeVar('InputDType', bound=DType)
-OutputDType = TypeVar('OutputDType', bound=DType)
+A = TypeVar('A', bound=Array[Shape, DType])
 
 EvalPointsType = Union[
     ArrayLike,
@@ -60,7 +60,11 @@ EvalPointsType = Union[
     Iterable[GridPointsLike],
 ]
 
-AcceptedExtrapolation = Union[ExtrapolationLike, None, Literal["default"]]
+AcceptedExtrapolation = Union[
+    ExtrapolationLike[A],
+    None,
+    Literal["default"],
+]
 
 
 def _join_evaluation(
@@ -111,7 +115,23 @@ def _join_evaluation(
     return res
 
 
-class NDFunction(Protocol):
+# When higher-kinded types are supported in Python, this should be generic on:
+# - Array backend (e.g.: NumPy or CuPy arrays, or PyTorch tensors)
+# - Function shape (e.g.: for vector of N functions, matrix of N_1 x N_2
+#   functions)
+# - Input shape (e.g.: for functions of vectors of P elements (functions of
+#   several variables) or functions of matrices P_1 x P_2
+# - Input dtype (e.g.: float input, complex input)
+# - Output shape (e.g.: Q-sized vector-valued functions, matrix-valued
+#   functions with size Q_1 x Q_2
+# - Output dtype (e.g.: float output, complex output)
+#
+# Right now, we have to choose, so we choose to preserve the backend
+# information, which is (type-wise) probably the most important.
+#
+# In the future we hope this can be retrofitted when higher-kinded
+# types and generic defaults are added.
+class NDFunction(Protocol[A]):
     """
     Protocol for an arbitrary-dimensional array of functions.
 
@@ -123,7 +143,7 @@ class NDFunction(Protocol):
     def __init__(
         self,
         *,
-        extrapolation: Optional[ExtrapolationLike] = None,
+        extrapolation: Optional[ExtrapolationLike[A]] = None,
     ) -> None:
 
         self.extrapolation = extrapolation  # type: ignore[assignment]
@@ -193,31 +213,34 @@ class NDFunction(Protocol):
         pass
 
     @property
-    def extrapolation(self) -> Evaluator | None:
+    def extrapolation(self) -> Evaluator[A] | None:
         """Extrapolation used for evaluating values outside the bounds."""
         return (  # type: ignore [no-any-return]
             self._extrapolation  # type: ignore [attr-defined]
         )
 
     @extrapolation.setter
-    def extrapolation(self, value: ExtrapolationLike | None) -> None:
+    def extrapolation(
+        self,
+        value: ExtrapolationLike[A] | None,
+    ) -> None:
         self._extrapolation = (  # type: ignore [misc, attr-defined]
             _parse_extrapolation(value)
         )
 
     @property
     @abstractmethod
-    def domain(self) -> Region[InputDType]:
+    def domain(self) -> Region[A]:
         """Domain of the function."""
         pass
 
     @abstractmethod
     def _evaluate(
         self,
-        eval_points: NDArrayFloat,
+        eval_points: A,
         *,
         aligned: bool = True,
-    ) -> NDArrayFloat:
+    ) -> A:
         """Define the evaluation of the FData.
 
         Evaluates the samples of an FData object at several points.
@@ -242,167 +265,62 @@ class NDFunction(Protocol):
         pass
 
     @overload
-    def evaluate(
-        self,
-        eval_points: ArrayLike,
-        *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
-        grid: Literal[False] = False,
-        aligned: Literal[True] = True,
-    ) -> NDArrayFloat:
-        pass
-
-    @overload
-    def evaluate(
-        self,
-        eval_points: Iterable[ArrayLike],
-        *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
-        grid: Literal[False] = False,
-        aligned: Literal[False],
-    ) -> NDArrayFloat:
-        pass
-
-    @overload
-    def evaluate(
-        self,
-        eval_points: GridPointsLike,
-        *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
-        grid: Literal[True],
-        aligned: Literal[True] = True,
-    ) -> NDArrayFloat:
-        pass
-
-    @overload
-    def evaluate(
-        self,
-        eval_points: Iterable[GridPointsLike],
-        *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
-        grid: Literal[True],
-        aligned: Literal[False],
-    ) -> NDArrayFloat:
-        pass
-
-    def evaluate(
-        self,
-        eval_points: EvalPointsType,
-        *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
-        grid: bool = False,
-        aligned: bool = True,
-    ) -> NDArrayFloat:
-        """
-        Evaluate the object at a list of values or a grid.
-
-        ..  deprecated:: 0.8
-            Use normal calling notation instead.
-
-        Args:
-            eval_points: List of points where the functions are
-                evaluated. If ``grid`` is ``True``, a list of axes, one per
-                :term:`domain` dimension, must be passed instead. If
-                ``aligned`` is ``True``, then a list of lists (of points or
-                axes, as explained) must be passed, with one list per sample.
-            derivative: Deprecated. Order of the derivative to evaluate.
-            extrapolation: Controls the
-                extrapolation mode for elements outside the domain range. By
-                default it is used the mode defined during the instance of the
-                object.
-            grid: Whether to evaluate the results on a grid
-                spanned by the input arrays, or at points specified by the
-                input arrays. If true the eval_points should be a list of size
-                dim_domain with the corresponding times for each axis. The
-                return matrix has shape n_samples x len(t1) x len(t2) x ... x
-                len(t_dim_domain) x dim_codomain. If the domain dimension is 1
-                the parameter has no efect. Defaults to False.
-            aligned: Whether the input points are the same for each sample,
-                or an array of points per sample is passed.
-
-        Returns:
-            Matrix whose rows are the values of the each
-            function at the values specified in eval_points.
-
-        """
-        warnings.warn(
-            "The method 'evaluate' is deprecated. "
-            "Please use the normal calling notation on the functional data "
-            "object instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return self(
-            eval_points=eval_points,
-            derivative=derivative,
-            extrapolation=extrapolation,
-            grid=grid,
-            aligned=aligned,
-        )
-
-    @overload
     def __call__(
         self,
-        eval_points: ArrayLike,
+        eval_points: A,
         *,
         derivative: int = 0,
         extrapolation: AcceptedExtrapolation = "default",
         grid: Literal[False] = False,
         aligned: bool = True,
-    ) -> NDArrayFloat:
+    ) -> A:
         pass
 
     @overload
     def __call__(
         self,
-        eval_points: GridPointsLike,
+        eval_points: A | NestedArray[A],
         *,
         derivative: int = 0,
         extrapolation: AcceptedExtrapolation = "default",
         grid: Literal[True],
         aligned: Literal[True] = True,
-    ) -> NDArrayFloat:
+    ) -> A:
         pass
 
     @overload
     def __call__(
         self,
-        eval_points: Iterable[GridPointsLike],
+        eval_points: NestedArray[A],
         *,
         derivative: int = 0,
         extrapolation: AcceptedExtrapolation = "default",
         grid: Literal[True],
         aligned: Literal[False],
-    ) -> NDArrayFloat:
+    ) -> A:
         pass
 
     @overload
     def __call__(
         self,
-        eval_points: EvalPointsType,
+        eval_points: A,
         *,
         derivative: int = 0,
         extrapolation: AcceptedExtrapolation = "default",
         grid: bool = False,
         aligned: bool = True,
-    ) -> NDArrayFloat:
+    ) -> A:
         pass
 
     def __call__(
         self,
-        eval_points: EvalPointsType,
+        eval_points: A,
         *,
         derivative: int = 0,
         extrapolation: AcceptedExtrapolation = "default",
         grid: bool = False,
         aligned: bool = True,
-    ) -> NDArrayFloat:
+    ) -> A:
         """
         Evaluate the :term:`functional object`.
 
@@ -435,6 +353,7 @@ class NDFunction(Protocol):
 
         """
         from ...misc.validation import validate_evaluation_points
+        from ._functions import _evaluate_grid
 
         if derivative != 0:
             warnings.warn(
@@ -452,11 +371,8 @@ class NDFunction(Protocol):
         if grid:  # Evaluation of a grid performed in auxiliar function
 
             return _evaluate_grid(
+                self,
                 eval_points,
-                evaluate_method=self,
-                n_samples=self.n_samples,
-                dim_domain=self.dim_domain,
-                dim_codomain=self.dim_codomain,
                 extrapolation=extrapolation,
                 aligned=aligned,
             )
@@ -496,10 +412,10 @@ class NDFunction(Protocol):
                     eval_points_evaluation = eval_points[index_ev]
 
                 else:
-                    index_ext = np.logical_or.reduce(index_matrix, axis=0)
+                    index_ext = np.any(index_matrix, axis=0)
                     eval_points_extrapolation = eval_points[:, index_ext]
 
-                    index_ev = np.logical_or.reduce(~index_matrix, axis=0)
+                    index_ev = np.any(~index_matrix, axis=0)
                     eval_points_evaluation = eval_points[:, index_ev]
 
                 # Direct evaluation
@@ -749,7 +665,7 @@ class NDFunction(Protocol):
         self,
         s_points: NDArrayFloat,
         t_points: NDArrayFloat,
-        / ,
+        /,
         correction: int = 0,
     ) -> NDArrayFloat:
         pass
@@ -757,7 +673,7 @@ class NDFunction(Protocol):
     @overload
     def cov(  # noqa: WPS451
         self,
-        / ,
+        /,
         correction: int = 0,
     ) -> Callable[[NDArrayFloat, NDArrayFloat], NDArrayFloat]:
         pass
@@ -767,7 +683,7 @@ class NDFunction(Protocol):
         self,
         s_points: Optional[NDArrayFloat] = None,
         t_points: Optional[NDArrayFloat] = None,
-        / ,
+        /,
         correction: int = 0,
     ) -> Union[
         Callable[[NDArrayFloat, NDArrayFloat], NDArrayFloat],

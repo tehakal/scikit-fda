@@ -71,10 +71,6 @@ class TestFDataBasisEvaluation(unittest.TestCase):
 
         # Different ways to pass the axes
         np.testing.assert_allclose(
-            f(t, grid=True),
-            res_test,
-        )
-        np.testing.assert_allclose(
             f((t,), grid=True),
             res_test,
         )
@@ -82,8 +78,11 @@ class TestFDataBasisEvaluation(unittest.TestCase):
             f([t], grid=True),
             res_test,
         )
+        grid = np.empty(shape=1, dtype=np.object_)
+        grid[...] = [t]
+        grid = np.squeeze(grid)
         np.testing.assert_allclose(
-            f(np.atleast_2d(t), grid=True),
+            f(grid, grid=True),
             res_test,
         )
 

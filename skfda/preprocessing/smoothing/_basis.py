@@ -11,7 +11,8 @@ from typing import Optional
 import numpy as np
 from typing_extensions import Final
 
-from ..._utils import _cartesian_product, _to_grid_points
+from ..._utils import _to_grid_points
+from ..._utils.ndfunction.utils import _cartesian_product
 from ...misc.lstsq import LstsqMethod, solve_regularized_weighted_lstsq
 from ...misc.regularization import L2Regularization
 from ...representation import FData, FDataBasis, FDataGrid

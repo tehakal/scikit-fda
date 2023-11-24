@@ -7,7 +7,8 @@ import numpy as np
 import scipy.integrate
 from scipy.stats import multivariate_normal
 
-from .._utils import _cartesian_product, _to_grid_points, normalize_warping
+from .._utils import _to_grid_points, normalize_warping
+from .._utils.ndfunction.utils import _cartesian_product
 from ..misc.covariances import Brownian, CovarianceLike, _execute_covariance
 from ..misc.validation import validate_random_state
 from ..representation import FDataGrid

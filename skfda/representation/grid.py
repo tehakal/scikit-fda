@@ -34,6 +34,7 @@ from matplotlib.figure import Figure
 from .._utils import _check_array_key, _int_to_real, _to_grid_points, constants
 from .._utils.ndfunction.evaluator import Evaluator
 from .._utils.ndfunction.extrapolation import ExtrapolationLike
+from .._utils.ndfunction.utils import grid_points_equal
 from ..typing._base import (
     DomainRange,
     DomainRangeLike,
@@ -97,7 +98,7 @@ class FDataGrid(FData):  # noqa: WPS214
                    [[ 4.],
                     [ 5.],
                     [ 6.]]]),
-            grid_points=(array([ 2., 4., 5.]),),
+            grid_points=array([array([2, 4, 5])], dtype=object),
             domain_range=((2.0, 5.0),),
             ...)
 
@@ -441,7 +442,7 @@ class FDataGrid(FData):  # noqa: WPS214
                         [ 1.5],
                         [ 2. ],
                         [ 4. ]]]),
-                grid_points=(array([ 0., 1., 2., 3., 4.]),),
+                grid_points=array([array([0, 1, 2, 3, 4])], dtype=object),
                 domain_range=((0.0, 4.0),),
                 ...)
 
@@ -455,7 +456,7 @@ class FDataGrid(FData):  # noqa: WPS214
                         [-1.],
                         [ 2.],
                         [ 5.]]]),
-                grid_points=(array([ 0., 1., 2., 3., 4.]),),
+                grid_points=array([array([0, 1, 2, 3, 4])], dtype=object),
                 domain_range=((0.0, 4.0),),
                 ...)
 
@@ -530,7 +531,7 @@ class FDataGrid(FData):  # noqa: WPS214
     def _check_same_dimensions(self: T, other: T) -> None:
         if self.data_matrix.shape[1:-1] != other.data_matrix.shape[1:-1]:
             raise ValueError("Error in columns dimensions")
-        if not np.array_equal(self.grid_points, other.grid_points):
+        if not grid_points_equal(self.grid_points, other.grid_points):
             raise ValueError("Grid points for both objects must be equal")
 
     def sum(  # noqa: WPS125
@@ -864,7 +865,7 @@ class FDataGrid(FData):  # noqa: WPS214
                         [ 7.],
                         [ 9.],
                         [ 2.]]]),
-                grid_points=(array([ 0., 1., 2., 3., 4.]),),
+                grid_points=array([array([0, 1, 2, 3, 4])], dtype=object),
                 domain_range=((0.0, 4.0),),
                 ...)
 
@@ -875,7 +876,7 @@ class FDataGrid(FData):  # noqa: WPS214
                 self._check_same_dimensions(other)
 
         elif not all(
-            np.array_equal(self.grid_points, other.grid_points)
+            grid_points_equal(self.grid_points, other.grid_points)
             for other in others
         ):
             raise ValueError(
@@ -1375,7 +1376,7 @@ class FDataGrid(FData):  # noqa: WPS214
         for i in inputs:
             if (
                 isinstance(i, FDataGrid)
-                and not np.array_equal(i.grid_points, self.grid_points)
+                and not grid_points_equal(i.grid_points, self.grid_points)
             ):
                 return NotImplemented
 
