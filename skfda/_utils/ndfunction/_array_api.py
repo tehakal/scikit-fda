@@ -1,4 +1,5 @@
 """Types and functions associated with the Python array API standard."""
+from __future__ import annotations
 
 from typing import Any, Protocol, TypeVar
 
