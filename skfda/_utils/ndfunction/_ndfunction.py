@@ -33,7 +33,7 @@ from array_api_compat import array_namespace
 from matplotlib.figure import Figure
 from typing_extensions import Self
 
-from ...typing._base import DomainRange, GridPointsLike, LabelTupleLike
+from ...typing._base import DomainRange, LabelTupleLike
 from ...typing._numpy import (
     ArrayLike,
     NDArrayBool,
@@ -46,6 +46,7 @@ from ._array_api import Array, DType, NestedArray, Shape
 from ._region import Region
 from .evaluator import Evaluator
 from .extrapolation import ExtrapolationLike, _parse_extrapolation
+from .typing import GridPointsLike
 
 if TYPE_CHECKING:
     from ...representation.basis import Basis, FDataBasis
@@ -55,9 +56,9 @@ T = TypeVar('T', bound='NDFunction')
 A = TypeVar('A', bound=Array[Shape, DType])
 
 EvalPointsType = Union[
-    ArrayLike,
-    GridPointsLike,
-    Iterable[GridPointsLike],
+    A,
+    GridPointsLike[A],
+    Sequence[GridPointsLike[A]],
 ]
 
 AcceptedExtrapolation = Union[
@@ -268,9 +269,9 @@ class NDFunction(Protocol[A]):
     def __call__(
         self,
         eval_points: A,
+        /,
         *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
+        extrapolation: AcceptedExtrapolation[A] = "default",
         grid: Literal[False] = False,
         aligned: bool = True,
     ) -> A:
@@ -279,10 +280,9 @@ class NDFunction(Protocol[A]):
     @overload
     def __call__(
         self,
-        eval_points: A | NestedArray[A],
+        eval_points: GridPointsLike[A],
         *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
+        extrapolation: AcceptedExtrapolation[A] = "default",
         grid: Literal[True],
         aligned: Literal[True] = True,
     ) -> A:
@@ -291,10 +291,9 @@ class NDFunction(Protocol[A]):
     @overload
     def __call__(
         self,
-        eval_points: NestedArray[A],
+        eval_points: Sequence[GridPointsLike[A]],
         *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
+        extrapolation: AcceptedExtrapolation[A] = "default",
         grid: Literal[True],
         aligned: Literal[False],
     ) -> A:
@@ -303,10 +302,9 @@ class NDFunction(Protocol[A]):
     @overload
     def __call__(
         self,
-        eval_points: A,
+        eval_points: EvalPointsType[A],
         *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
+        extrapolation: AcceptedExtrapolation[A] = "default",
         grid: bool = False,
         aligned: bool = True,
     ) -> A:
@@ -314,10 +312,9 @@ class NDFunction(Protocol[A]):
 
     def __call__(
         self,
-        eval_points: A,
+        eval_points: EvalPointsType[A],
         *,
-        derivative: int = 0,
-        extrapolation: AcceptedExtrapolation = "default",
+        extrapolation: AcceptedExtrapolation[A] = "default",
         grid: bool = False,
         aligned: bool = True,
     ) -> A:
@@ -355,19 +352,6 @@ class NDFunction(Protocol[A]):
         from ...misc.validation import validate_evaluation_points
         from ._functions import _evaluate_grid
 
-        if derivative != 0:
-            warnings.warn(
-                "Parameter derivative is deprecated. Use the "
-                "derivative function instead.",
-                DeprecationWarning,
-            )
-            return self.derivative(order=derivative)(
-                eval_points,
-                extrapolation=extrapolation,
-                grid=grid,
-                aligned=aligned,
-            )
-
         if grid:  # Evaluation of a grid performed in auxiliar function
 
             return _evaluate_grid(
@@ -377,11 +361,11 @@ class NDFunction(Protocol[A]):
                 aligned=aligned,
             )
 
-        if extrapolation == "default":
-            extrapolation = self.extrapolation
-        else:
-            # Gets the function to perform extrapolation or None
-            extrapolation = _parse_extrapolation(extrapolation)
+        extrapolation = (
+            self.extrapolation
+            if extrapolation == "default"
+            else _parse_extrapolation(extrapolation)
+        )
 
         eval_points = cast(
             ArrayLike,

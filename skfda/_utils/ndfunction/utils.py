@@ -1,10 +1,9 @@
 """Public utilities for dealing with arrays of functions."""
 from __future__ import annotations
 
-from typing import Sequence, TypeVar, Union, cast, overload
+from typing import Sequence, TypeVar, cast
 
 import numpy as np
-from typing_extensions import TypeAlias
 
 from ._array_api import (
     Array,
@@ -15,11 +14,9 @@ from ._array_api import (
     is_array_api_obj,
     is_nested_array,
 )
+from .typing import GridPoints, GridPointsLike
 
 A = TypeVar('A', bound=Array[Shape, DType])
-
-GridPoints: TypeAlias = NestedArray
-GridPointsLike: TypeAlias = Union[A, Sequence[A], NestedArray[A]]
 
 
 def _to_grid_points(grid_points_like: GridPointsLike[A]) -> GridPoints[A]:
@@ -40,23 +37,22 @@ def _to_grid_points(grid_points_like: GridPointsLike[A]) -> GridPoints[A]:
         if is_nested_array(grid_points_like):
             # This type ignore won't be needed once PEP 724 is accepted
             return grid_points_like  # type: ignore [return-value]
-        else:
-            # It is an array
-            grid_points = np.empty(shape=1, dtype=np.object_)
-            grid_points[0] = grid_points_like
-            return np.squeeze(grid_points)
 
-    else:
-        # It is a sequence!
-        # Ensure that elements are compatible arrays
+        # It is an array
+        grid_points = np.empty(shape=1, dtype=np.object_)
+        grid_points[0] = grid_points_like
+        return np.squeeze(grid_points)
 
-        # This cast won't be needed once PEP 724 is accepted
-        grid_points_like = cast(Sequence[A], grid_points_like)
+    # It is a sequence!
+    # Ensure that elements are compatible arrays
 
-        array_namespace(*grid_points_like)
-        grid_points = np.empty(shape=len(grid_points_like), dtype=np.object_)
-        grid_points[...] = grid_points_like
-        return grid_points
+    # This cast won't be needed once PEP 724 is accepted
+    grid_points_like = cast(Sequence[A], grid_points_like)
+
+    array_namespace(*grid_points_like)
+    grid_points = np.empty(shape=len(grid_points_like), dtype=np.object_)
+    grid_points[...] = grid_points_like
+    return grid_points
 
 
 def cartesian_product(  # noqa: WPS234
