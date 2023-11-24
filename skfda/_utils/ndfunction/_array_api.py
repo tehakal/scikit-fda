@@ -1,10 +1,10 @@
 """Types and functions associated with the Python array API standard."""
 
-from typing import Any, Protocol, TypeGuard, TypeVar
+from typing import Any, Protocol, TypeVar
 
 import array_api_compat
 import numpy as np
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, TypeGuard
 
 DType = np.generic
 D = TypeVar("D", bound=DType)
