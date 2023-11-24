@@ -151,9 +151,6 @@ def cartesian_product(  # noqa: WPS234
     )
 
 
-_cartesian_product = cartesian_product
-
-
 def grid_points_equal(gp1: GridPoints[A], gp2: GridPoints[A], /) -> bool:
     """Check if grid points are equal."""
     shape_equal = gp1.shape == gp2.shape

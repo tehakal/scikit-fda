@@ -8,7 +8,7 @@ import scipy.integrate
 from scipy.stats import multivariate_normal
 
 from .._utils import _to_grid_points, normalize_warping
-from .._utils.ndfunction.utils import _cartesian_product
+from .._utils.ndfunction.utils import cartesian_product
 from ..misc.covariances import Brownian, CovarianceLike, _execute_covariance
 from ..misc.validation import validate_random_state
 from ..representation import FDataGrid
@@ -66,7 +66,7 @@ def make_gaussian(
 
     grid_points = _to_grid_points(grid_points)
 
-    input_points = _cartesian_product(grid_points)
+    input_points = cartesian_product(grid_points)
 
     covariance = _execute_covariance(
         cov,

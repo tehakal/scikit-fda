@@ -10,7 +10,7 @@ from typing import Optional
 import numpy as np
 
 from ..._utils import _to_grid_points
-from ..._utils.ndfunction.utils import _cartesian_product
+from ..._utils.ndfunction.utils import cartesian_product
 from ...misc.hat_matrix import HatMatrix, NadarayaWatsonHatMatrix
 from ...misc.metrics import PairwiseMetric, l2_distance
 from ...typing._base import GridPointsLike
@@ -131,8 +131,8 @@ class KernelSmoother(_LinearSmoother):
         output_points: GridPointsLike,
     ) -> NDArrayFloat:
 
-        input_points = _cartesian_product(_to_grid_points(input_points))
-        output_points = _cartesian_product(_to_grid_points(output_points))
+        input_points = cartesian_product(_to_grid_points(input_points))
+        output_points = cartesian_product(_to_grid_points(output_points))
 
         if self.kernel_estimator is None:
             self.kernel_estimator = NadarayaWatsonHatMatrix()
