@@ -29,7 +29,7 @@ from typing import (
 
 import numpy as np
 import pandas.api.extensions
-from array_api_compat import array_namespace
+from ._array_api import array_namespace
 from matplotlib.figure import Figure
 from typing_extensions import Self
 
@@ -41,8 +41,8 @@ from ...typing._numpy import (
     NDArrayInt,
     NDArrayObject,
 )
-from .._utils import _to_grid_points
-from ._array_api import Array, DType, NestedArray, Shape
+from .utils.validation import check_grid_points
+from ._array_api import Array, DType, Shape
 from ._region import Region
 from .evaluator import Evaluator
 from .extrapolation import ExtrapolationLike, _parse_extrapolation
@@ -364,13 +364,11 @@ class NDFunction(Protocol[A]):
         extrapolation = (
             self.extrapolation
             if extrapolation == "default"
-            else _parse_extrapolation(extrapolation)
+            # Mypy bug: https://github.com/python/mypy/issues/16465
+            else _parse_extrapolation(extrapolation)  # type: ignore [arg-type]
         )
 
-        eval_points = cast(
-            ArrayLike,
-            eval_points,
-        )
+        eval_points = cast(A, eval_points)
 
         # Convert to array and check dimensions of eval points
         eval_points = validate_evaluation_points(
@@ -382,25 +380,29 @@ class NDFunction(Protocol[A]):
 
         if extrapolation is not None:
 
-            index_matrix = ~self.domain.contains(eval_points)
+            xp = array_namespace(eval_points)
 
-            if index_matrix.any():
+            contained_points_idx = self.domain.contains(eval_points)
+
+            if not xp.all(contained_points_idx):
 
                 # Partition of eval points
                 if aligned:
 
-                    index_ext = index_matrix
-                    index_ev = ~index_matrix
+                    evaluation_idx = contained_points_idx
+                    extrapolation_idx = xp.logical_not(contained_points_idx)
 
-                    eval_points_extrapolation = eval_points[index_ext]
-                    eval_points_evaluation = eval_points[index_ev]
+                    eval_points_extrapolation = eval_points[extrapolation_idx]
+                    eval_points_evaluation = eval_points[evaluation_idx]
 
                 else:
-                    index_ext = np.any(index_matrix, axis=0)
-                    eval_points_extrapolation = eval_points[:, index_ext]
+                    extrapolation_idx = xp.any(
+                        xp.logical_not(contained_points_idx), axis=0)
+                    eval_points_extrapolation = eval_points[:,
+                                                            extrapolation_idx]
 
-                    index_ev = np.any(~index_matrix, axis=0)
-                    eval_points_evaluation = eval_points[:, index_ev]
+                    evaluation_idx = xp.any(contained_points_idx, axis=0)
+                    eval_points_evaluation = eval_points[:, evaluation_idx]
 
                 # Direct evaluation
                 res_evaluation = self._evaluate(
@@ -415,15 +417,16 @@ class NDFunction(Protocol[A]):
                 )
 
                 return _join_evaluation(
-                    index_matrix,
-                    index_ext,
-                    index_ev,
+                    ~contained_points_idx,
+                    extrapolation_idx,
+                    evaluation_idx,
                     res_extrapolation,
                     res_evaluation,
                     n_samples=self.n_samples,
                     dim_codomain=self.dim_codomain,
                 )
 
+        # Normal evaluation if there are no points to extrapolate.
         return self._evaluate(
             eval_points,
             aligned=aligned,
@@ -514,7 +517,7 @@ class NDFunction(Protocol[A]):
 
         """
         assert grid_points is not None
-        grid_points = _to_grid_points(grid_points)
+        grid_points = check_grid_points(grid_points)
 
         arr_shifts = np.array([shifts] if np.isscalar(shifts) else shifts)
 
@@ -554,11 +557,7 @@ class NDFunction(Protocol[A]):
                 grid=True,
             )
         else:
-            shifted_grid_points_per_sample = (
-                tuple(
-                    g + s for g, s in zip(grid_points, shift)
-                ) for shift in arr_shifts
-            )
+            shifted_grid_points_per_sample = grid_points + arr_shifts
             data_matrix = self(
                 shifted_grid_points_per_sample,
                 extrapolation=extrapolation,

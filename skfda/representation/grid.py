@@ -31,10 +31,11 @@ import scipy.integrate
 import scipy.stats.mstats
 from matplotlib.figure import Figure
 
-from .._utils import _check_array_key, _int_to_real, _to_grid_points, constants
+from .._utils import _check_array_key, _int_to_real, constants
 from .._utils.ndfunction.evaluator import Evaluator
 from .._utils.ndfunction.extrapolation import ExtrapolationLike
 from .._utils.ndfunction.utils import grid_points_equal
+from .._utils.ndfunction.utils.validation import check_grid_points
 from ..typing._base import (
     DomainRange,
     DomainRangeLike,
@@ -88,7 +89,7 @@ class FDataGrid(FData):  # noqa: WPS214
         with 3 discretization points.
 
         >>> data_matrix = [[1, 2, 3], [4, 5, 6]]
-        >>> grid_points = [2, 4, 5]
+        >>> grid_points = np.array([2, 4, 5])
         >>> FDataGrid(data_matrix, grid_points)
         FDataGrid(
             array([[[ 1.],
@@ -105,7 +106,7 @@ class FDataGrid(FData):  # noqa: WPS214
         The number of columns of data_matrix have to be the length of
         grid_points.
 
-        >>> FDataGrid(np.array([1,2,4,5,8]), range(6))
+        >>> FDataGrid(np.array([1,2,4,5,8]), np.arange(6))
         Traceback (most recent call last):
             ....
         ValueError: Incorrect dimension in data_matrix and grid_points...
@@ -116,7 +117,7 @@ class FDataGrid(FData):  # noqa: WPS214
         representing a function :math:`f : \mathbb{R}\longmapsto\mathbb{R}^2`.
 
         >>> data_matrix = [[[1, 0.3], [2, 0.4]], [[2, 0.5], [3, 0.6]]]
-        >>> grid_points = [2, 4]
+        >>> grid_points = np.array([2, 4])
         >>> fd = FDataGrid(data_matrix, grid_points)
         >>> fd.dim_domain, fd.dim_codomain
         (1, 2)
@@ -125,7 +126,7 @@ class FDataGrid(FData):  # noqa: WPS214
         representing a function :math:`f : \mathbb{R}^2\longmapsto\mathbb{R}`.
 
         >>> data_matrix = [[[1, 0.3], [2, 0.4]], [[2, 0.5], [3, 0.6]]]
-        >>> grid_points = [[2, 4], [3,6]]
+        >>> grid_points = [np.array([2, 4]), np.array([3,6])]
         >>> fd = FDataGrid(data_matrix, grid_points)
         >>> fd.dim_domain, fd.dim_codomain
         (2, 1)
@@ -160,7 +161,7 @@ class FDataGrid(FData):  # noqa: WPS214
         self.data_matrix = _int_to_real(np.atleast_2d(data_matrix))
 
         if grid_points is None:
-            self.grid_points = _to_grid_points([
+            self.grid_points = check_grid_points([
                 np.linspace(0, 1, self.data_matrix.shape[i])
                 for i in range(1, self.data_matrix.ndim)
             ])
@@ -169,7 +170,7 @@ class FDataGrid(FData):  # noqa: WPS214
             # Check that the dimension of the data matches the grid_points
             # list
 
-            self.grid_points = _to_grid_points(grid_points)
+            self.grid_points = check_grid_points(grid_points).reshape(-1)
 
             data_shape = self.data_matrix.shape[1: 1 + self.dim_domain]
             grid_points_shape = [len(i) for i in self.grid_points]
@@ -276,7 +277,7 @@ class FDataGrid(FData):  # noqa: WPS214
 
     @property
     def dim_domain(self) -> int:
-        return len(self.grid_points)
+        return self.grid_points.size
 
     @property
     def dim_codomain(self) -> int:
@@ -434,7 +435,7 @@ class FDataGrid(FData):  # noqa: WPS214
         Examples:
             First order derivative
 
-            >>> fdata = FDataGrid([1,2,4,5,8], range(5))
+            >>> fdata = FDataGrid([1,2,4,5,8], np.arange(5))
             >>> fdata.derivative()
             FDataGrid(
                 array([[[ 0.5],
@@ -448,7 +449,7 @@ class FDataGrid(FData):  # noqa: WPS214
 
             Second order derivative
 
-            >>> fdata = FDataGrid([1,2,4,5,8], range(5))
+            >>> fdata = FDataGrid([1,2,4,5,8], np.arange(5))
             >>> fdata.derivative(order=2)
             FDataGrid(
                 array([[[ 3.],
@@ -508,7 +509,7 @@ class FDataGrid(FData):  # noqa: WPS214
             with the integrated data.
 
         Examples:
-            >>> fdata = FDataGrid([1,2,4,5,8], range(5))
+            >>> fdata = FDataGrid([1,2,4,5,8], np.arange(5))
             >>> fdata.integrate()
             array([[ 15.]])
         """
@@ -850,8 +851,8 @@ class FDataGrid(FData):  # noqa: WPS214
             FDataGrid object with the samples from the original objects.
 
         Examples:
-            >>> fd = FDataGrid([1,2,4,5,8], range(5))
-            >>> fd_2 = FDataGrid([3,4,7,9,2], range(5))
+            >>> fd = FDataGrid([1,2,4,5,8], np.arange(5))
+            >>> fd_2 = FDataGrid([3,4,7,9,2], np.arange(5))
             >>> fd.concatenate(fd_2)
             FDataGrid(
                 array([[[ 1.],
@@ -1003,7 +1004,7 @@ class FDataGrid(FData):  # noqa: WPS214
         grid_points = (
             self.grid_points
             if grid_points is None
-            else _to_grid_points(grid_points)
+            else check_grid_points(grid_points)
         )
 
         return self.copy(
@@ -1294,7 +1295,7 @@ class FDataGrid(FData):  # noqa: WPS214
             eval_points = (
                 fd.grid_points
                 if eval_points is None
-                else _to_grid_points(eval_points)
+                else check_grid_points(eval_points)
             )
 
             grid_transformation = fd(eval_points, grid=True)
@@ -1485,9 +1486,7 @@ class FDataGridDType(
     ) -> None:
         from ..misc.validation import validate_domain_range
 
-        grid_points = _to_grid_points(grid_points)
-
-        self.grid_points = tuple(tuple(s) for s in grid_points)
+        self.grid_points = check_grid_points(grid_points)
 
         if domain_range is None:
             domain_range = tuple((s[0], s[-1]) for s in self.grid_points)
@@ -1534,11 +1533,12 @@ class FDataGridDType(
             isinstance(other, FDataGridDType)
             and self.dim_codomain == other.dim_codomain
             and self.domain_range == other.domain_range
-            and self.grid_points == other.grid_points
+            and grid_points_equal(self.grid_points, other.grid_points)
         )
 
     def __hash__(self) -> int:
-        return hash((self.grid_points, self.domain_range, self.dim_codomain))
+        # Grid points are not currently hashed
+        return hash((self.domain_range, self.dim_codomain))
 
 
 class _CoordinateIterator(Sequence[T]):

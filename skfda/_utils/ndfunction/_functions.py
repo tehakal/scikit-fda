@@ -56,8 +56,9 @@ def _one_grid_to_points(
     Returns also the shape containing the information of how each point
     is formed.
     """
-    from .utils import _to_grid_points, cartesian_product
-    axes = _to_grid_points(axes)
+    from .utils.validation import check_grid_points
+    from .utils import cartesian_product
+    axes = check_grid_points(axes)
 
     if axes.size != dim_domain:
         raise ValueError(

@@ -284,7 +284,7 @@ class TestEvaluateFDataGrid(unittest.TestCase):
                 np.tile([3, 4, 5], (2, 2, 1)),
             ])
 
-        grid_points = [[0, 1], [0, 1]]
+        grid_points = [np.array([0, 1]), np.array([0, 1])]
 
         fd = FDataGrid(data_matrix, grid_points=grid_points)
         self.assertEqual(fd.n_samples, 2)
@@ -359,7 +359,11 @@ class TestEvaluateFDataGrid(unittest.TestCase):
     def test_restrict(self) -> None:
         """Test FDataGrid.restrict with bounds."""
         # Test 1 sample function R^3 -> R^5.
-        grid_points = ([0, 1], [0, 1, 2], [0, 1, 2, 3])
+        grid_points = (
+            np.array([0, 1]),
+            np.array([0, 1, 2]),
+            np.array([0, 1, 2, 3]),
+        )
         data_matrix = np.ones((1, 2, 3, 4, 5))
         fd = FDataGrid(data_matrix, grid_points)
         restricted_domain = ((0, 1), (0.5, 1.5), (0.5, 2))

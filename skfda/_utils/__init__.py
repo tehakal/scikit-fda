@@ -18,7 +18,6 @@ __getattr__, __dir__, __all__ = lazy.attach(
             "_pairwise_symmetric",
             "_same_domain",
             "_to_grid",
-            "_to_grid_points",
             "function_to_fdatabasis",
             "nquad_vec",
         ],
@@ -41,7 +40,6 @@ if TYPE_CHECKING:
         _pairwise_symmetric as _pairwise_symmetric,
         _same_domain as _same_domain,
         _to_grid as _to_grid,
-        _to_grid_points as _to_grid_points,
         function_to_fdatabasis as function_to_fdatabasis,
         nquad_vec as nquad_vec,
     )

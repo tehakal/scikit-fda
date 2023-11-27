@@ -123,64 +123,6 @@ def _to_grid(
     return X, y
 
 
-def _to_grid_points(grid_points_like: GridPointsLike) -> GridPoints:
-    """Convert to grid points.
-
-    If the original list is one-dimensional (e.g. [1, 2, 3]), return list to
-    array (in this case [array([1, 2, 3])]).
-
-    If the original list is two-dimensional (e.g. [[1, 2, 3], [4, 5]]), return
-    a list containing other one-dimensional arrays (in this case
-    [array([1, 2, 3]), array([4, 5])]).
-
-    In any other case the behaviour is unespecified.
-
-    """
-    unidimensional = False
-
-    if not isinstance(grid_points_like, Iterable):
-        grid_points_like = [grid_points_like]
-
-    if not isinstance(grid_points_like[0], Iterable):
-        unidimensional = True
-
-    if unidimensional:
-        return (_int_to_real(np.asarray(grid_points_like)),)
-
-    return tuple(_int_to_real(np.asarray(i)) for i in grid_points_like)
-
-
-def _to_grid_points(grid_points_like: GridPointsLike) -> GridPoints:
-    """Convert to grid points.
-
-    If the original list is one-dimensional (e.g. [1, 2, 3]), return list to
-    array (in this case [array([1, 2, 3])]).
-
-    If the original list is two-dimensional (e.g. [[1, 2, 3], [4, 5]]), return
-    a list containing other one-dimensional arrays (in this case
-    [array([1, 2, 3]), array([4, 5])]).
-
-    In any other case the behaviour is unespecified.
-
-    """
-    unidimensional = False
-
-    if not isinstance(grid_points_like, Iterable):
-        grid_points_like = [grid_points_like]
-
-    if not isinstance(grid_points_like[0], Iterable):
-        unidimensional = True
-
-    if unidimensional:
-        array = np.empty(shape=[1], dtype=np.object_)
-        array[...] = [np.array(grid_points_like)]
-        return array
-
-    array = np.empty(shape=len(grid_points_like), dtype=np.object_)
-    array[...] = [np.array(g) for g in grid_points_like]
-    return array
-
-
 def _same_domain(fd: Union[Basis, FData], fd2: Union[Basis, FData]) -> bool:
     """Check if the domain range of two objects is the same."""
     return np.array_equal(fd.domain_range, fd2.domain_range)
