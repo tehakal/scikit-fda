@@ -297,13 +297,13 @@ def test_coordinates():
     # First coordinate at 0
     np.testing.assert_allclose(
         functions.coordinates[0](0),
-        np.array([[[1]], [[4]], [[9]]]),
+        np.array([[1], [4], [9]]),
     )
 
     # Second two coordinates at 1
     np.testing.assert_allclose(
         functions.coordinates[1:3](1),
-        np.array([[[3, 5]], [[8, 9]], [[16 + 3, 18 + 5]]]),
+        np.array([[3, 5], [8, 9], [16 + 3, 18 + 5]]),
     )
 
 

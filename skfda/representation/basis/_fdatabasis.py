@@ -252,15 +252,15 @@ class FDataBasis(FData):  # noqa: WPS214
 
         if aligned:
 
-            eval_points = np.asarray(eval_points)
-
             # Each row contains the values of one element of the basis
             basis_values = self.basis(eval_points)
 
             res = np.tensordot(self.coefficients, basis_values, axes=(1, 0))
 
             return res.reshape(
-                (self.n_samples, len(eval_points), self.dim_codomain),
+                (self.n_samples,)
+                + eval_points.shape[:-1]
+                + (self.dim_codomain,),
             )
 
         res_list = [
@@ -388,7 +388,7 @@ class FDataBasis(FData):  # noqa: WPS214
             domain,
         )
 
-        return integrated[:, 0, :]
+        return integrated[:, :]
 
     def sum(  # noqa: WPS125
         self: T,

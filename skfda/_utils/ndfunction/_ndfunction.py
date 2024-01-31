@@ -33,6 +33,7 @@ from ._array_api import array_namespace
 from matplotlib.figure import Figure
 from typing_extensions import Self
 
+from .utils.validation import check_evaluation_points, check_array_namespace
 from ...typing._base import DomainRange, LabelTupleLike
 from ...typing._numpy import (
     ArrayLike,
@@ -150,14 +151,20 @@ class NDFunction(Protocol[A]):
         self.extrapolation = extrapolation  # type: ignore[assignment]
 
     @property
+    @abstractmethod
+    def array_backend(self) -> Any:
+        """
+        Return the array backend used.
+
+        This property returns the array namespace of the arrays
+        that the functions use as both input and output.
+
+        """
+        pass
+
+    @property
     def ndim(self) -> int:
-        """
-        Shape of the array of functions.
-
-        It is a tuple representing the shape of the array containing the
-        functions.
-
-        """
+        """Number of dimensions of the array of functions."""
         return len(self.shape)
 
     @property
@@ -178,6 +185,11 @@ class NDFunction(Protocol[A]):
         return prod(self.shape)
 
     @property
+    def input_ndim(self) -> int:
+        """Number of dimensions of the n-dimensional input."""
+        return len(self.input_shape)
+
+    @property
     @abstractmethod
     def input_shape(self) -> tuple[int, ...]:
         """
@@ -188,6 +200,11 @@ class NDFunction(Protocol[A]):
 
         """
         pass
+
+    @property
+    def output_ndim(self) -> int:
+        """Number of dimensions of the n-dimensional output."""
+        return len(self.output_shape)
 
     @property
     @abstractmethod
@@ -368,14 +385,17 @@ class NDFunction(Protocol[A]):
             else _parse_extrapolation(extrapolation)  # type: ignore [arg-type]
         )
 
-        eval_points = cast(A, eval_points)
+        eval_points = check_array_namespace(
+            eval_points,
+            namespace=self.array_backend,
+            allow_array_like=True,
+        )[0]
 
-        # Convert to array and check dimensions of eval points
-        eval_points = validate_evaluation_points(
+        eval_points = check_evaluation_points(
             eval_points,
             aligned=aligned,
-            n_samples=self.n_samples,
-            dim_domain=self.dim_domain,
+            shape=self.shape,
+            input_shape=self.input_shape,
         )
 
         if extrapolation is not None:

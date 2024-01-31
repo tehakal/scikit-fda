@@ -5,6 +5,8 @@ from typing import Any, Protocol, TypeVar
 
 import array_api_compat
 import numpy as np
+import numpy.typing
+import array_api_compat.numpy
 from typing_extensions import Self, TypeAlias, TypeGuard
 
 DType = np.generic
@@ -14,6 +16,9 @@ S = TypeVar("S", bound=Shape)
 Array: TypeAlias = np.ndarray[S, np.dtype[D]]
 BoolDType = np.bool_
 A = TypeVar('A', bound=Array[Shape, DType])
+ArrayLike = np.typing.ArrayLike
+
+numpy_namespace = array_api_compat.numpy
 
 
 class NestedArray(Protocol[A]):  # type: ignore [misc]

@@ -59,6 +59,8 @@ def _one_grid_to_points(
     from .utils.validation import check_grid_points
     from .utils import cartesian_product
     axes = check_grid_points(axes)
+    if axes.shape == ():
+        axes.shape = (1,)
 
     if axes.size != dim_domain:
         raise ValueError(
@@ -273,7 +275,7 @@ def _average_function_ufunc(
     except TypeError:
 
         def integrand(*args: NDArrayFloat) -> NDArrayFloat:  # noqa: WPS430
-            f1 = data(args)[:, 0, :]
+            f1 = data(args)[:, :]
             return ufunc(f1)
 
         return nquad_vec(
