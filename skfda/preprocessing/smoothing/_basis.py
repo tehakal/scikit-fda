@@ -15,7 +15,7 @@ from ..._utils.ndfunction.utils import cartesian_product
 from ..._utils.ndfunction.utils.validation import check_grid_points
 from ...misc.lstsq import LstsqMethod, solve_regularized_weighted_lstsq
 from ...misc.regularization import L2Regularization
-from ...representation import FData, FDataBasis, FDataGrid
+from ...representation import FData, FDataBasis, FDataGrid, FDataIrregular
 from ...representation.basis import Basis
 from ...typing._base import GridPointsLike
 from ...typing._numpy import NDArrayFloat
@@ -226,15 +226,15 @@ class BasisSmoother(_LinearSmoother):
 
     def _coef_matrix(
         self,
-        input_points: GridPointsLike,
+        input_points: NDArrayFloat,
         *,
-        data_matrix: Optional[NDArrayFloat] = None,
+        function_values: NDArrayFloat | None = None,
     ) -> NDArrayFloat:
         """Get the matrix that gives the coefficients."""
         from ...misc.regularization import compute_penalty_matrix
 
         basis_values_input = self.basis(
-            cartesian_product(check_grid_points(input_points)),
+            input_points,
         ).reshape((self.basis.n_basis, -1)).T
 
         penalty_matrix = compute_penalty_matrix(
@@ -244,13 +244,13 @@ class BasisSmoother(_LinearSmoother):
         )
 
         # Get the matrix for computing the coefficients if no
-        # data_matrix is passed
-        if data_matrix is None:
-            data_matrix = np.eye(basis_values_input.shape[0])
+        # function_values is passed
+        if function_values is None:
+            function_values = np.eye(basis_values_input.shape[0])
 
         return solve_regularized_weighted_lstsq(
             coefs=basis_values_input,
-            result=data_matrix,
+            result=function_values,
             weights=self.weights,
             penalty_matrix=penalty_matrix,
             lstsq_method=self.method,
@@ -267,11 +267,13 @@ class BasisSmoother(_LinearSmoother):
             ),
         ).reshape((self.basis.n_basis, -1)).T
 
-        return basis_values_output @ self._coef_matrix(input_points)
+        return basis_values_output @ self._coef_matrix(
+            cartesian_product(input_points),
+        )
 
     def fit(
         self,
-        X: FDataGrid,
+        X: FDataGrid | FDataIrregular,
         y: object = None,
     ) -> BasisSmoother:
         """Compute the hat matrix for the desired output points.
@@ -284,7 +286,7 @@ class BasisSmoother(_LinearSmoother):
             self
 
         """
-        self.input_points_ = X.grid_points
+        self.input_points_ = X._get_input_points()
         self.output_points_ = (
             check_grid_points(self.output_points)
             if self.output_points is not None
@@ -298,7 +300,7 @@ class BasisSmoother(_LinearSmoother):
 
     def transform(
         self,
-        X: FDataGrid,
+        X: FDataGrid | FDataIrregular,
         y: object = None,
     ) -> FData:
         """
@@ -315,14 +317,16 @@ class BasisSmoother(_LinearSmoother):
         assert all(
             np.array_equal(i, s) for i, s in zip(
                 self.input_points_,
-                X.grid_points,
+                X._get_input_points(),
             )
         )
 
+        eval_points, function_values = X._get_points_and_values()
+
         if self.return_basis:
             coefficients = self._coef_matrix(
-                input_points=X.grid_points,
-                data_matrix=X.data_matrix.reshape((X.n_samples, -1)).T,
+                input_points=eval_points,
+                function_values=function_values,
             ).T
 
             return FDataBasis(

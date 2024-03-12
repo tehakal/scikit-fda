@@ -17,6 +17,7 @@ from typing import (
     Literal,
     Optional,
     Sequence,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -34,7 +35,7 @@ from matplotlib.figure import Figure
 from .._utils import _check_array_key, _int_to_real, constants
 from .._utils.ndfunction.evaluator import Evaluator
 from .._utils.ndfunction.extrapolation import ExtrapolationLike
-from .._utils.ndfunction.utils import grid_points_equal
+from .._utils.ndfunction.utils import cartesian_product, grid_points_equal
 from .._utils.ndfunction.utils.validation import check_grid_points
 from ..typing._base import (
     DomainRange,
@@ -70,7 +71,7 @@ class FDataGrid(FData):  # noqa: WPS214
             contains the points of dicretisation for each axis of data_matrix.
         domain_range: 2 dimension matrix where each row
             contains the bounds of the interval in which the functional data
-            is considered to exist for each one of the axies.
+            is considered to exist for each one of the axes.
         dataset_name: name of the dataset.
         argument_names: tuple containing the names of the different
             arguments.
@@ -534,6 +535,15 @@ class FDataGrid(FData):  # noqa: WPS214
             raise ValueError("Error in columns dimensions")
         if not grid_points_equal(self.grid_points, other.grid_points):
             raise ValueError("Grid points for both objects must be equal")
+
+    def _get_points_and_values(self: T) -> Tuple[NDArrayFloat, NDArrayFloat]:
+        return (
+            cartesian_product(self.grid_points),
+            self.data_matrix.reshape((self.n_samples, -1)).T,
+        )
+
+    def _get_input_points(self: T) -> GridPoints:
+        return self.grid_points
 
     def sum(  # noqa: WPS125
         self: T,
