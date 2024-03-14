@@ -70,10 +70,10 @@ def check_evaluation_points(
     """
     Check the evaluation points.
 
-    The trailing dimensions of the shape of the evaluation points need to be
-    the same as the input shape.
     The leading dimensions need to be the same as the array shape in the
     unaligned case.
+    The trailing dimensions of the shape of the evaluation points need to be
+    the same as the input shape.
 
     Args:
         eval_points: Evaluation points to be reshaped.
@@ -86,6 +86,16 @@ def check_evaluation_points(
         Evaluation points if all checks pass. Otherwise an exception is raised.
 
     """
+    if not aligned and eval_points.shape[:len(shape)] != shape:
+        raise ValueError(
+            f"Invalid shape for evaluation points."
+            f"The leading shape dimensions in the unaligned case "
+            f"were expected to be {shape}, corresponding with the "
+            f"shape of the array."
+            f"Instead, the received evaluation points have shape "
+            f"{eval_points.shape}.",
+        )
+
     if eval_points.shape[-len(input_shape):] != input_shape:
 
         # This should probably be removed in the future.
@@ -100,16 +110,6 @@ def check_evaluation_points(
                 f"Instead, the received evaluation points have shape "
                 f"{eval_points.shape}.",
             )
-
-    if not aligned and eval_points.shape[:len(shape)] != shape:
-        raise ValueError(
-            f"Invalid shape for evaluation points."
-            f"The leading shape dimensions in the unaligned case "
-            f"were expected to be {shape}, corresponding with the "
-            f"shape of the array."
-            f"Instead, the received evaluation points have shape "
-            f"{eval_points.shape}.",
-        )
 
     return eval_points
 

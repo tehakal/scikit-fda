@@ -1,7 +1,7 @@
 """Public utilities for dealing with arrays of functions."""
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
 
@@ -10,6 +10,9 @@ from ..typing import GridPoints
 from .validation import check_grid_points
 
 A = TypeVar('A', bound=Array[Shape, DType])
+
+if TYPE_CHECKING:
+    from .._ndfunction import NDFunction
 
 
 def cartesian_product(  # noqa: WPS234
@@ -112,3 +115,28 @@ def grid_points_equal(gp1: GridPoints[A], gp2: GridPoints[A], /) -> bool:
     )
 
     return shape_equal and values_equal
+
+
+def input_points_batch_shape(
+    input_points: A,
+    ndfunction: NDFunction[A],
+    *,
+    aligned: bool,
+) -> tuple[int, ...]:
+    """
+    Retrieve the batch shape of input points.
+
+    The shape of input points can be separated in three parts:
+    - A leading shape identical to the NDFunction ``shape`` for unaligned
+    evaluation.
+    - A middle part containing the shape of the points themselves (for
+    batch evaluation).
+    - A final part with the same shape as the ``input_shape`` of the
+    NDFunction.
+
+    """
+    shape = input_points.shape[:-len(ndfunction.input_shape)]
+    if not aligned:
+        shape = shape[len(ndfunction.shape):]
+
+    return shape

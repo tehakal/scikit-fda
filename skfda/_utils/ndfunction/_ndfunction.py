@@ -366,7 +366,6 @@ class NDFunction(Protocol[A]):
             function at the values specified in eval_points.
 
         """
-        from ...misc.validation import validate_evaluation_points
         from ._functions import _evaluate_grid
 
         if grid:  # Evaluation of a grid performed in auxiliar function
