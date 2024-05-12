@@ -7,7 +7,6 @@ of functions.
 
 from __future__ import annotations
 
-import warnings
 from abc import abstractmethod
 from math import prod
 from typing import (
@@ -21,20 +20,18 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
+    TypeAlias,
     TypeVar,
     Union,
     cast,
     overload,
-    TypeAlias,
 )
 
 import numpy as np
 import pandas.api.extensions
-from ._array_api import array_namespace
 from matplotlib.figure import Figure
 from typing_extensions import Self
 
-from .utils.validation import check_evaluation_points, check_array_namespace
 from ...typing._base import DomainRange, LabelTupleLike
 from ...typing._numpy import (
     ArrayLike,
@@ -43,12 +40,15 @@ from ...typing._numpy import (
     NDArrayInt,
     NDArrayObject,
 )
-from .utils.validation import check_grid_points
-from ._array_api import Array, DType, Shape
+from ._array_api import Array, DType, Shape, array_namespace
 from ._region import Region
 from .evaluator import Evaluator
 from .extrapolation import ExtrapolationLike, _parse_extrapolation
 from .typing import GridPointsLike
+from .utils.validation import (
+    check_array_namespace,
+    check_evaluation_points,
+)
 
 if TYPE_CHECKING:
     from ...representation.basis import Basis, FDataBasis
@@ -203,11 +203,12 @@ class NDFunction(Protocol[A]):
     def _evaluate(
         self,
         eval_points: A,
+        /,
         *,
         aligned: bool = True,
     ) -> A:
         """
-        Define the evaluation of the FData.
+        Evaluate the :term:`functional object`.
 
         Evaluates the samples of an FData object at several points.
 
@@ -290,31 +291,45 @@ class NDFunction(Protocol[A]):
         """
         Evaluate the :term:`functional object`.
 
-        Evaluate the object or its derivatives at a list of values or a
-        grid. This method is a wrapper of :meth:`evaluate`.
+        Evaluate the object at a list of values or a grid.
 
         Args:
-            eval_points: List of points where the functions are
-                evaluated. If a matrix of shape nsample x eval_points is given
-                each sample is evaluated at the values in the corresponding row
-                in eval_points.
-            extrapolation: Controls the
-                extrapolation mode for elements outside the domain range. By
-                default it is used the mode defined during the instance of the
-                object.
+            eval_points: Points where the functions are evaluated.
+                An array is expected, whose last dimensions must match the
+                :attr:`input_shape <NDFunction.input_shape>` of the
+                functions.
+                If ``aligned`` is set, then separate points are used for
+                each function in the array, and the first dimensions must
+                match the :attr:`shape <NDFunction.shape>` of the functions
+                accordingly.
+                The intermediate dimensions are "batch" dimensions, which
+                will be respected in the output.
+            extrapolation: Controls the extrapolation mode for elements
+                outside the domain range. By default it is used the mode
+                defined on the instance of the object.
             grid: Whether to evaluate the results on a grid
                 spanned by the input arrays, or at points specified by the
-                input arrays. If true the eval_points should be a list of size
-                dim_domain with the corresponding times for each axis. The
-                return matrix has shape n_samples x len(t1) x len(t2) x ... x
-                len(t_dim_domain) x dim_codomain. If the domain dimension is 1
-                the parameter has no efect. Defaults to False.
+                input arrays. If true the eval_points should be a list or
+                object array with the same shape as the
+                :attr:`input_shape <NDFunction.input_shape>` of the functions.
+                Each element would be an array of grid points for that
+                position. The returned evaluations would correspond to those
+                of the points in the Cartesian product.
             aligned: Whether the input points are the same for each sample,
                 or an array of points per sample is passed.
+                If ``aligned`` is set, then separate points are used for
+                each function in the array, and the first dimensions of
+                ``eval_points`` must match the
+                :attr:`shape <NDFunction.shape>` of the functions.
 
         Returns:
-            Matrix whose rows are the values of the each
-            function at the values specified in eval_points.
+            Array containing the values of each function at the points
+            specified in eval_points.
+            The first dimensions correspond to
+            :attr:`shape <NDFunction.shape>`, while the last dimensions
+            correspond to :attr:`output_shape <NDFunction.output_shape>`.
+            The intermediate dimensions would be the "batch" dimensions
+            used in `eval_points`.
 
         """
         from ._functions import _evaluate_grid
@@ -379,149 +394,6 @@ class NDFunction(Protocol[A]):
 
         # Normal evaluation if there are no points to extrapolate.
         return res_evaluation
-
-    @abstractmethod
-    def derivative(self, *, order: int = 1) -> Self:
-        """Differentiate a FData object.
-
-        Args:
-            order: Order of the derivative. Defaults to one.
-
-        Returns:
-            Functional object containg the derivative.
-
-        """
-        pass
-
-    @abstractmethod
-    def integrate(
-        self,
-        *,
-        domain: Optional[DomainRange] = None,
-    ) -> NDArrayFloat:
-        """
-        Integration of the FData object.
-
-        The integration is performed over the whole domain. Thus, for a
-        function of several variables this will be a multiple integral.
-
-        For a vector valued function the vector of integrals will be
-        returned.
-
-        Args:
-            domain: Domain range where we want to integrate.
-                By default is None as we integrate on the whole domain.
-
-        Returns:
-            NumPy array of size (``n_samples``, ``dim_codomain``)
-            with the integrated data.
-
-        """
-        pass
-
-    @abstractmethod
-    def shift(
-        self,
-        shifts: Union[ArrayLike, float],
-        *,
-        restrict_domain: bool = False,
-        extrapolation: AcceptedExtrapolation = "default",
-        grid_points: Optional[GridPointsLike] = None,
-    ) -> FDataGrid:
-        r"""
-        Perform a shift of the curves.
-
-        The i-th shifted function :math:`y_i` has the form
-
-        .. math::
-            y_i(t) = x_i(t + \delta_i)
-
-        where :math:`x_i` is the i-th original function and :math:`delta_i` is
-        the shift performed for that function, that must be a vector in the
-        domain space.
-
-        Note that a positive shift moves the graph of the function in the
-        negative direction and vice versa.
-
-        Args:
-            shifts: List with the shifts
-                corresponding for each sample or numeric with the shift to
-                apply to all samples.
-            restrict_domain: If True restricts the domain to avoid the
-                evaluation of points outside the domain using extrapolation.
-                Defaults uses extrapolation.
-            extrapolation: Controls the
-                extrapolation mode for elements outside the domain range.
-                By default uses the method defined in fd. See extrapolation to
-                more information.
-            grid_points: Grid of points where
-                the functions are evaluated to obtain the discrete
-                representation of the object to operate. If ``None`` the
-                current grid_points are used to unificate the domain of the
-                shifted data.
-
-        Returns:
-            Shifted functions.
-
-        """
-        assert grid_points is not None
-        grid_points = check_grid_points(grid_points)
-
-        arr_shifts = np.array([shifts] if np.isscalar(shifts) else shifts)
-
-        # Accept unidimensional array when the domain dimension is one or when
-        # the shift is the same for each sample
-        if arr_shifts.ndim == 1:
-            arr_shifts = (
-                arr_shifts[np.newaxis, :]  # Same shift for each sample
-                if len(arr_shifts) == self.dim_domain
-                else arr_shifts[:, np.newaxis]
-            )
-
-        if len(arr_shifts) not in {1, self.n_samples}:
-            raise ValueError(
-                f"The length of the shift vector ({len(arr_shifts)}) must "
-                f"have length equal to 1 or to the number of samples "
-                f"({self.n_samples})",
-            )
-
-        if restrict_domain:
-            domain = np.asarray(self.domain_range)
-
-            a = domain[:, 0] - np.min(np.min(arr_shifts, axis=0), 0)
-            b = domain[:, 1] - np.max(np.max(arr_shifts, axis=1), 0)
-
-            domain = np.hstack((a, b))
-            domain_range = tuple(domain)
-
-        if len(arr_shifts) == 1:
-            shifted_grid_points = tuple(
-                g + s for g, s in zip(grid_points, arr_shifts[0])
-            )
-            data_matrix = self(
-                shifted_grid_points,
-                extrapolation=extrapolation,
-                aligned=True,
-                grid=True,
-            )
-        else:
-            shifted_grid_points_per_sample = grid_points + arr_shifts
-            data_matrix = self(
-                shifted_grid_points_per_sample,
-                extrapolation=extrapolation,
-                aligned=False,
-                grid=True,
-            )
-
-        shifted = self.to_grid().copy(
-            data_matrix=data_matrix,
-            grid_points=grid_points,
-        )
-
-        if restrict_domain:
-            shifted = shifted.restrict(domain_range)
-
-        return shifted
 
     def plot(self, *args: Any, **kwargs: Any) -> Figure:
         """Plot the FDatGrid object.
