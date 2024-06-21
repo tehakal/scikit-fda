@@ -10,13 +10,9 @@ from __future__ import annotations
 from abc import abstractmethod
 from math import prod
 from typing import (
-    TYPE_CHECKING,
     Any,
-    Callable,
     Iterable,
-    Iterator,
     Literal,
-    NoReturn,
     Optional,
     Protocol,
     Sequence,
@@ -27,32 +23,16 @@ from typing import (
     overload,
 )
 
-import numpy as np
-import pandas.api.extensions
-from matplotlib.figure import Figure
 from typing_extensions import Self
 
-from ...typing._base import DomainRange, LabelTupleLike
-from ...typing._numpy import (
-    ArrayLike,
-    NDArrayBool,
-    NDArrayFloat,
-    NDArrayInt,
-    NDArrayObject,
-)
+from ...typing._base import LabelTupleLike
+from ...typing._numpy import NDArrayBool, NDArrayFloat, NDArrayInt
 from ._array_api import Array, DType, Shape, array_namespace
 from ._region import Region
 from .evaluator import Evaluator
 from .extrapolation import ExtrapolationLike, _parse_extrapolation
 from .typing import GridPointsLike
-from .utils.validation import (
-    check_array_namespace,
-    check_evaluation_points,
-)
-
-if TYPE_CHECKING:
-    from ...representation.basis import Basis, FDataBasis
-    from ...representation.grid import FDataGrid
+from .utils.validation import check_array_namespace, check_evaluation_points
 
 T = TypeVar('T', bound='NDFunction')
 A = TypeVar('A', bound=Array[Shape, DType])
@@ -395,23 +375,6 @@ class NDFunction(Protocol[A]):
         # Normal evaluation if there are no points to extrapolate.
         return res_evaluation
 
-    def plot(self, *args: Any, **kwargs: Any) -> Figure:
-        """Plot the FDatGrid object.
-
-        Args:
-            args: Positional arguments to be passed to the class
-                :class:`~skfda.exploratory.visualization.representation.GraphPlot`.
-            kwargs: Keyword arguments to be passed to the class
-                :class:`~skfda.exploratory.visualization.representation.GraphPlot`.
-
-        Returns:
-            Figure object in which the graphs are plotted.
-
-        """
-        from ...exploratory.visualization.representation import GraphPlot
-
-        return GraphPlot(self, *args, **kwargs).plot()
-
     @abstractmethod
     def copy(
         self,
@@ -421,192 +384,9 @@ class NDFunction(Protocol[A]):
         argument_names: Optional[LabelTupleLike] = None,
         coordinate_names: Optional[LabelTupleLike] = None,
         sample_names: Optional[LabelTupleLike] = None,
-        extrapolation: Optional[ExtrapolationLike] = None,
+        extrapolation: Optional[ExtrapolationLike[A]] = None,
     ) -> Self:
         """Make a copy of the object."""
-        pass
-
-    @abstractmethod  # noqa: WPS125
-    def sum(  # noqa: WPS125
-        self,
-        *,
-        axis: int | None = None,
-        out: None = None,
-        keepdims: bool = False,
-        skipna: bool = False,
-        min_count: int = 0,
-    ) -> Self:
-        """Compute the sum of all the samples.
-
-        Args:
-            axis: Used for compatibility with numpy. Must be None or 0.
-            out: Used for compatibility with numpy. Must be None.
-            keepdims: Used for compatibility with numpy. Must be False.
-            skipna: Wether the NaNs are ignored or not.
-            min_count: Number of valid (non NaN) data to have in order
-                for the a variable to not be NaN when `skipna` is
-                `True`.
-
-        Returns:
-            A FData object with just one sample representing
-            the sum of all the samples in the original object.
-
-        """
-        if (
-            (axis is not None and axis != 0)
-            or out is not None
-            or keepdims is not False
-        ):
-            raise NotImplementedError(
-                "Not implemented for that parameter combination",
-            )
-
-        return self
-
-    @overload
-    def cov(  # noqa: WPS451
-        self,
-        s_points: NDArrayFloat,
-        t_points: NDArrayFloat,
-        /,
-        correction: int = 0,
-    ) -> NDArrayFloat:
-        pass
-
-    @overload
-    def cov(  # noqa: WPS451
-        self,
-        /,
-        correction: int = 0,
-    ) -> Callable[[NDArrayFloat, NDArrayFloat], NDArrayFloat]:
-        pass
-
-    @abstractmethod
-    def cov(  # noqa: WPS320, WPS451
-        self,
-        s_points: Optional[NDArrayFloat] = None,
-        t_points: Optional[NDArrayFloat] = None,
-        /,
-        correction: int = 0,
-    ) -> Union[
-        Callable[[NDArrayFloat, NDArrayFloat], NDArrayFloat],
-        NDArrayFloat,
-    ]:
-        """Compute the covariance of the functional data object.
-
-        Calculates the unbiased sample covariance function of the data.
-        This is expected to be only defined for univariate functions.
-        The resulting covariance function is defined in the cartesian
-        product of the domain of the functions.
-        If s_points or t_points are not provided, this method returns
-        a callable object representing the covariance function.
-        If s_points and t_points are provided, this method returns the
-        evaluation of the covariance function at the grid formed by the
-        cartesian product of the points in s_points and t_points.
-
-        Args:
-            s_points: Points where the covariance function is evaluated.
-            t_points: Points where the covariance function is evaluated.
-            correction: degrees of freedom adjustment. The divisor used in the
-                calculation is `N - correction`, where `N` represents the
-                number of elements. Default: `0`.
-
-        Returns:
-            Covariance function.
-
-        """
-        pass
-
-    def mean(
-        self,
-        *,
-        axis: int | None = None,
-        dtype: None = None,
-        out: None = None,
-        keepdims: bool = False,
-        skipna: bool = False,
-    ) -> Self:
-        """Compute the mean of all the samples.
-
-        Args:
-            axis: Used for compatibility with numpy. Must be None or 0.
-            dtype: Used for compatibility with numpy. Must be None.
-            out: Used for compatibility with numpy. Must be None.
-            keepdims: Used for compatibility with numpy. Must be False.
-            skipna: Wether the NaNs are ignored or not.
-
-        Returns:
-            A FData object with just one sample representing
-            the mean of all the samples in the original object.
-
-        """
-        if dtype is not None:
-            raise NotImplementedError(
-                "Not implemented for that parameter combination",
-            )
-
-        return (
-            self.sum(axis=axis, out=out, keepdims=keepdims, skipna=skipna)
-            / self.n_samples
-        )
-
-    @abstractmethod
-    def to_grid(
-        self,
-        grid_points: Optional[GridPointsLike] = None,
-    ) -> FDataGrid:
-        """Return the discrete representation of the object.
-
-        Args:
-            grid_points: Points per axis
-                where the function is going to be evaluated.
-
-        Returns:
-            Discrete representation of the functional data
-            object.
-
-        """
-        pass
-
-    @abstractmethod
-    def to_basis(
-        self,
-        basis: Basis,
-        **kwargs: Any,
-    ) -> FDataBasis:
-        """Return the basis representation of the object.
-
-        Args:
-            basis: basis object in which the functional data are
-                going to be represented.
-            kwargs: keyword arguments to be passed to
-                FDataBasis.from_data().
-
-        Returns:
-            Basis representation of the funtional data
-            object.
-
-        """
-        pass
-
-    @abstractmethod
-    def concatenate(self, *others: Self, as_coordinates: bool = False) -> Self:
-        """Join samples from a similar FData object.
-
-        Joins samples from another FData object if it has the same
-        dimensions and has compatible representations.
-
-        Args:
-            others: other FData objects.
-            as_coordinates:  If False concatenates as
-                new samples, else, concatenates the other functions as
-                new components of the image. Defaults to False.
-
-        Returns:
-            :class:`FData`: FData object with the samples from the two
-            original objects.
-
-        """
         pass
 
     @abstractmethod
@@ -637,64 +417,18 @@ class NDFunction(Protocol[A]):
         """Return self[key]."""
         pass
 
-    def equals(self, other: object) -> bool:
-        """Whole object equality."""
-        return (
-            isinstance(other, type(self))  # noqa: WPS222
-            and self.extrapolation == other.extrapolation
-            and self.dataset_name == other.dataset_name
-            and self.argument_names == other.argument_names
-            and self.coordinate_names == other.coordinate_names
-        )
-
     @abstractmethod
-    def _eq_elemenwise(self, other: Self) -> NDArrayBool:
-        """Elementwise equality."""
-        pass
-
-    def __eq__(self, other: object) -> NDArrayBool:  # type: ignore[override]
+    def __eq__(self, other: Self) -> NDArrayBool:  # type: ignore[override]
         """Elementwise equality, as with arrays."""
-        if not isinstance(other, type(self)) or self.dtype != other.dtype:
-            if other is pandas.NA:
-                return self.isna()
-            if pandas.api.types.is_list_like(other) and not isinstance(
-                other, (pandas.Series, pandas.Index, pandas.DataFrame),
-            ):
-                other = cast(Iterable[object], other)
-                return np.concatenate([x == y for x, y in zip(self, other)])
+        return NotImplemented
 
-            return NotImplemented
-
-        if len(self) != len(other) and len(self) != 1 and len(other) != 1:
-            raise ValueError(
-                f"Different lengths: "
-                f"len(self)={len(self)} and "
-                f"len(other)={len(other)}",
-            )
-
-        return self._eq_elemenwise(other)
-
-    def __ne__(self, other: object) -> NDArrayBool:  # type: ignore[override]
+    def __ne__(self, other: Self) -> NDArrayBool:  # type: ignore[override]
         """Return for `self != other` (element-wise in-equality)."""
         result = self.__eq__(other)
         if result is NotImplemented:
             return NotImplemented
 
         return ~result
-
-    def _copy_op(
-        self,
-        other: Union[Self, NDArrayFloat, NDArrayInt, float],
-        **kwargs: Any,
-    ) -> Self:
-
-        base_copy = (
-            other if isinstance(other, type(self))
-            and self.n_samples == 1 and other.n_samples != 1
-            else self
-        )
-
-        return base_copy.copy(**kwargs)
 
     @abstractmethod
     def __add__(self, other: Self) -> Self:
@@ -719,7 +453,7 @@ class NDFunction(Protocol[A]):
     @abstractmethod
     def __mul__(
         self,
-        other: Union[NDArrayFloat, NDArrayInt, float],
+        other: A | float,
     ) -> Self:
         """Multiplication for FData object."""
         pass
@@ -727,7 +461,7 @@ class NDFunction(Protocol[A]):
     @abstractmethod
     def __rmul__(
         self,
-        other: Union[NDArrayFloat, NDArrayInt, float],
+        other: A | float,
     ) -> Self:
         """Multiplication for FData object."""
         pass
@@ -735,7 +469,7 @@ class NDFunction(Protocol[A]):
     @abstractmethod
     def __truediv__(
         self,
-        other: Union[NDArrayFloat, NDArrayInt, float],
+        other: A | float,
     ) -> Self:
         """Division for FData object."""
         pass
@@ -743,7 +477,7 @@ class NDFunction(Protocol[A]):
     @abstractmethod
     def __rtruediv__(
         self,
-        other: Union[NDArrayFloat, NDArrayInt, float],
+        other: A | float,
     ) -> Self:
         """Right division for FData object."""
         pass
@@ -752,237 +486,6 @@ class NDFunction(Protocol[A]):
     def __neg__(self) -> Self:
         """Negation of FData object."""
         pass
-
-    def __iter__(self) -> Iterator[Self]:
-        """Iterate over the samples."""
-        yield from (self[i] for i in range(self.n_samples))
-
-    def __len__(self) -> int:
-        """Return the number of samples of the FData object."""
-        return self.n_samples
-
-    #####################################################################
-    # Numpy methods
-    #####################################################################
-
-    def __array__(self, *args: Any, **kwargs: Any) -> NDArrayObject:
-        """Return a numpy array with the objects."""
-        # This is to prevent numpy to access inner dimensions
-        array = np.empty(shape=len(self), dtype=np.object_)
-
-        for i, f in enumerate(self):
-            array[i] = f
-
-        return array
-
-    def __array_ufunc__(
-        self,
-        ufunc: Any,
-        method: str,
-        *inputs: Any,
-        **kwargs: Any,
-    ) -> Any:
-        """Prevent NumPy from converting to array just to do operations."""
-        # Make normal multiplication by scalar use the __mul__ method
-        if ufunc == np.multiply and method == "__call__" and len(inputs) == 2:
-            if isinstance(inputs[0], np.ndarray):
-                inputs = inputs[::-1]
-
-            return inputs[0] * inputs[1]
-
-        return NotImplemented
-
-    #####################################################################
-    # Pandas ExtensionArray methods
-    #####################################################################
-    @property
-    def ndim(self) -> int:
-        """
-        Return number of dimensions of the functional data.
-
-        It is always 1, as each observation is considered a "scalar" object.
-
-        Returns:
-            Number of dimensions of the functional data.
-
-        """
-        return 1
-
-    @classmethod
-    def _from_sequence(
-        cls,
-        scalars: Union['FData', Sequence['FData']],
-        dtype: Any = None,
-        copy: bool = False,
-    ) -> 'FData':
-
-        scalars_seq: Sequence['FData'] = (
-            [scalars] if isinstance(scalars, cls) else scalars
-        )
-
-        if copy:
-            scalars_seq = [f.copy() for f in scalars_seq]
-
-        if dtype is None:
-            first_element = next(s for s in scalars_seq if s is not pandas.NA)
-            dtype = first_element.dtype
-
-        scalars_seq = [
-            s if s is not pandas.NA else dtype._na_repr()  # noqa: WPS437
-            for s in scalars_seq
-        ]
-
-        if len(scalars_seq) == 0:
-            scalars_seq = [dtype._na_repr()[:0]]  # noqa: WPS437
-
-        return cls._concat_same_type(scalars_seq)
-
-    @classmethod
-    def _from_factorized(cls, values: Any, original: Any) -> NoReturn:
-        raise NotImplementedError(
-            "Factorization does not make sense for functional data",
-        )
-
-    @abstractmethod
-    def _take_allow_fill(
-        self,
-        indices: NDArrayInt,
-        fill_value: Self,
-    ) -> Self:
-        pass
-
-    @abstractmethod
-    def isna(self) -> NDArrayBool:  # noqa: D102
-        pass
-
-    def take(  # noqa: WPS238
-        self,
-        indices: Union[int, Sequence[int], NDArrayInt],
-        allow_fill: bool = False,
-        fill_value: Optional[Self] = None,
-        axis: int = 0,
-    ) -> Self:
-        """
-        Take elements from an array.
-
-        Parameters:
-            indices: Indices to be taken.
-            allow_fill: How to handle negative values in `indices`.
-
-                * False: negative values in `indices` indicate positional
-                  indices from the right (the default). This is similar to
-                  :func:`numpy.take`.
-                * True: negative values in `indices` indicate
-                  missing values. These values are set to `fill_value`. Any
-                  other negative values raise a ``ValueError``.
-
-            fill_value: Fill value to use for NA-indices
-                when `allow_fill` is True.
-                This may be ``None``, in which case the default NA value for
-                the type, ``self.dtype.na_value``, is used.
-                For many ExtensionArrays, there will be two representations of
-                `fill_value`: a user-facing "boxed" scalar, and a low-level
-                physical NA value. `fill_value` should be the user-facing
-                version, and the implementation should handle translating that
-                to the physical version for processing the take if necessary.
-            axis: Parameter for compatibility with numpy. Must be always 0.
-
-        Returns:
-            FData
-
-        Raises:
-            IndexError: When the indices are out of bounds for the array.
-            ValueError: When `indices` contains negative values other than
-                ``-1`` and `allow_fill` is True.
-
-        Notes:
-            ExtensionArray.take is called by ``Series.__getitem__``, ``.loc``,
-            ``iloc``, when `indices` is a sequence of values. Additionally,
-            it's called by :meth:`Series.reindex`, or any other method
-            that causes realignment, with a `fill_value`.
-
-        See Also:
-            numpy.take
-            pandas.api.extensions.take
-        """
-        # The axis parameter must exist, because sklearn tries to use take
-        # instead of __getitem__
-        if axis != 0:
-            raise ValueError(f"Axis must be 0, not {axis}")
-
-        arr_indices = np.atleast_1d(indices)
-
-        if fill_value is None:
-            fill_value = self.dtype.na_value
-
-        non_empty_take_msg = "cannot do a non-empty take from an empty axes"
-
-        if allow_fill:
-            if (arr_indices < -1).any():
-                raise ValueError("Invalid indexes")
-
-            positive_mask = arr_indices >= 0
-            if len(self) == 0 and positive_mask.any():
-                raise IndexError(non_empty_take_msg)
-
-            sample_names = np.zeros(len(arr_indices), dtype=object)
-            result = self._take_allow_fill(arr_indices, fill_value)
-
-            sample_names[positive_mask] = np.array(self.sample_names)[
-                arr_indices[positive_mask]
-            ]
-
-            if fill_value is not self.dtype.na_value:
-                sample_names[~positive_mask] = fill_value.sample_names[0]
-
-            result.sample_names = tuple(sample_names)
-        else:
-            if len(self) == 0 and len(arr_indices) != 0:
-                raise IndexError(non_empty_take_msg)
-
-            result = self[arr_indices]
-
-        return result
-
-    @classmethod
-    def _concat_same_type(
-        cls,
-        to_concat: Sequence[T],
-    ) -> T:
-        """
-        Concatenate multiple array.
-
-        Parameters:
-            to_concat: Sequence of FData objects to concat.
-
-        Returns:
-            Concatenation of the objects.
-
-        """
-        if isinstance(to_concat, cls):
-            return to_concat
-
-        return concatenate(to_concat)
-
-    def astype(self, dtype: Any, copy: bool = True) -> Any:
-        """Cast to a new dtype."""
-        if isinstance(dtype, type(self.dtype)):
-            new_obj = self
-            if copy:
-                new_obj = self.copy()
-            return new_obj
-
-        return super().astype(dtype)
-
-    def _reduce(self, name: str, skipna: bool = True, **kwargs: Any) -> Any:
-        meth = getattr(self, name, None)
-        if meth:
-            return meth(skipna=skipna, **kwargs)
-
-        raise TypeError(
-            f"'{type(self).__name__}' does not implement "
-            f"reduction '{name}'",
-        )
 
 
 def concatenate(functions: Iterable[T], as_coordinates: bool = False) -> T:
