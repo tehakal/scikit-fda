@@ -1408,14 +1408,15 @@ class FDataIrregular(FData):  # noqa: WPS214
             ],
         )
 
-        indices = np.cumsum(chunk_sizes) - chunk_sizes[0]
+        indices = np.concatenate([[0], np.cumsum(chunk_sizes)])[:-1]
 
         return self.copy(
             start_indices=indices.astype(int),
             points=arguments,
             values=values,
-            sample_names=self.sample_names[key],
+            sample_names=list(np.array(self.sample_names)[key]),
         )
+
     #####################################################################
     # Numpy methods
     #####################################################################
