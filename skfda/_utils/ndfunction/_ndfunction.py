@@ -30,18 +30,17 @@ from ...typing._numpy import NDArrayBool, NDArrayFloat, NDArrayInt
 from ._array_api import Array, DType, Shape, array_namespace
 from ._region import Region
 from .evaluator import Evaluator
-from .extrapolation import ExtrapolationLike, _parse_extrapolation
+from .extrapolation import (
+    AcceptedExtrapolation,
+    ExtrapolationLike,
+    _parse_extrapolation,
+)
 from .typing import GridPointsLike
 from .utils.validation import check_array_namespace, check_evaluation_points
 
-T = TypeVar('T', bound='NDFunction')
 A = TypeVar('A', bound=Array[Shape, DType])
 
 EvalPointsType: TypeAlias = A | GridPointsLike[A] | Sequence[GridPointsLike[A]]
-
-AcceptedExtrapolation: TypeAlias = (
-    ExtrapolationLike[A] | None | Literal["default"]
-)
 
 
 # When higher-kinded types are supported in Python, this should be generic on:
@@ -488,6 +487,9 @@ class NDFunction(Protocol[A]):
         pass
 
 
+T = TypeVar('T', bound='NDFunction[Any]')
+
+
 def concatenate(functions: Iterable[T], as_coordinates: bool = False) -> T:
     """
     Join samples from an iterable of similar FData objects.
@@ -518,24 +520,3 @@ def concatenate(functions: Iterable[T], as_coordinates: bool = False) -> T:
         )
 
     return first.concatenate(*functions, as_coordinates=as_coordinates)
-
-
-F = TypeVar("F", covariant=True)
-
-
-class _CoordinateSequence(Protocol[F]):
-    """
-    Sequence of coordinates.
-
-    Note that this represents a sequence of coordinates, not a sequence of
-    FData objects.
-    """
-
-    def __getitem__(
-        self,
-        key: Union[int, slice],
-    ) -> F:
-        pass
-
-    def __len__(self) -> int:
-        pass

@@ -12,6 +12,7 @@ from typing import (
     Any,
     Literal,
     Mapping,
+    TypeAlias,
     TypeVar,
     Union,
     overload,
@@ -34,6 +35,10 @@ ExtrapolationLike = Union[
     Evaluator[A],
     Literal["bounds", "exception", "nan", "none", "periodic", "zeros"],
 ]
+
+AcceptedExtrapolation: TypeAlias = (
+    ExtrapolationLike[A] | None | Literal["default"]
+)
 
 
 class PeriodicExtrapolation(Evaluator[RealArray]):

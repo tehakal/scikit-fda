@@ -3,6 +3,7 @@
 import numpy as np
 from scipy.stats import multivariate_normal, norm
 
+from skfda._utils.ndfunction.utils._points import grid_points_equal
 from skfda.datasets import euler_maruyama
 from skfda.typing._numpy import NDArrayFloat
 
@@ -570,9 +571,8 @@ def test_grid_points() -> None:
     start = 0
     stop = 10
     n_grid_points = 105
-    expected_grid_points = np.atleast_2d(
-        np.linspace(start, stop, n_grid_points),
-    )
+    expected_grid_points = np.empty(shape=(1,), dtype=object)
+    expected_grid_points[0] = np.linspace(start, stop, n_grid_points)
 
     fd = euler_maruyama(
         initial_condition,
@@ -583,7 +583,7 @@ def test_grid_points() -> None:
         random_state=random_state,
     )
 
-    np.testing.assert_array_equal(
+    assert grid_points_equal(
         fd.grid_points,
         expected_grid_points,
     )
