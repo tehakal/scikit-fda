@@ -21,7 +21,7 @@ from skfda.representation.basis import FourierBasis
 # In this example we will use a
 # :func:`sinusoidal process <skfda.datasets.make_sinusoidal_process>`
 # synthetically generated. This dataset consists in a sinusoidal wave with
-# fixed period which contanis phase and amplitude variation with gaussian
+# fixed period which contains phase and amplitude variation with gaussian
 # noise.
 #
 # In this example we want to register the curves using a translation
